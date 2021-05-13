@@ -1,6 +1,5 @@
-import tensorflow as tf
 from tensorflow.python.keras.models import Model
-from tensorflow.python.keras.layers import Conv2D, Input, Add, Average
+from tensorflow.python.keras.layers import Conv2D, Input, Multiply, Add
 
 def DRCN(recursive_depth, input_channels, filter_num = 256): 
     """
@@ -11,11 +10,8 @@ def DRCN(recursive_depth, input_channels, filter_num = 256):
 
     Inferencd_conv2d = Conv2D(filters = filter_num, kernel_size = (3, 3), padding = "same", activation = "relu")
 
-    Recon_0 = Conv2D(filters = filter_num, kernel_size = (3, 3), padding = "same", activation = "relu")
-    Recon_1 = Conv2D(filters = input_channels, kernel_size = (3, 3), padding = "same", activation = "relu")
     """
     Inferencd_conv2d : Inference net.
-    Recon_0, Recon_1 : Reconstruction net.
     """
     #model
     input_shape = Input((None, None, input_channels))
@@ -23,18 +19,24 @@ def DRCN(recursive_depth, input_channels, filter_num = 256):
     conv2d_0 = Conv2D(filters = filter_num, kernel_size = (3, 3), padding = "same", activation = "relu")(input_shape)
     conv2d_1 = Conv2D(filters = filter_num, kernel_size = (3, 3), padding = "same", activation = "relu")(conv2d_0)                       
     #Inference net and Reconstruction net.
-    H = []  
+    weight_list = []
+    pred_list = []
 
     for i in range(recursive_depth):
         Inferencd_output = Inferencd_conv2d(conv2d_1)
-        Reconstruction_1 = Recon_0(Inferencd_output)
-        Reconstruction_2 = Recon_1(Reconstruction_1)
-        H.append(Reconstruction_2)
+        Recon_0 = Conv2D(filters = filter_num, kernel_size = (3, 3), padding = "same", activation = "relu")(Inferencd_output)
+        Recon_1 = Conv2D(filters = input_channels, kernel_size = (3, 3), padding = "same", activation = "relu")(Recon_0)
+        weight_list.append(Recon_1)
+    
+    for i in range(recursive_depth):
+        skip_connection = Add()([weight_list[i], input_shape])
+        pred = Multiply()([weight_list[i], skip_connection])
 
-    final_output = Average()(H)
-    skip_connection = Add()([input_shape, final_output])
+        pred_list.append(pred)
 
-    model = Model(inputs = input_shape, outputs = skip_connection)
+    pred = Add()(pred_list)
+
+    model = Model(inputs = input_shape, outputs = pred)
     model.summary()
 
     return model
