@@ -148,8 +148,3 @@ if __name__ == "__main__":
                     print("psnr_pred:{}".format(ps_pred))
 
             print("psnr_pred_average:{}".format(ps_pred_ave / len(test_y)))
-
-
-  
- #https://keras.io/ja/callbacks/
- #https://keras.io/ja/getting-started/functional-api-guide/
