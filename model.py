@@ -9,40 +9,19 @@ def DRCN(recursive_depth, input_channels, filter_num = 256):
     filter_num : filter numbers.(default 256)
     """
 
-    Inferencd_conv2d = Conv2D(filters = filter_num,
-                            kernel_size = (3, 3),
-                            padding = "same",
-                            activation = "relu")
+    Inferencd_conv2d = Conv2D(filters = filter_num, kernel_size = (3, 3), padding = "same", activation = "relu")
 
-    Recon_0 = Conv2D(filters = filter_num,
-                        kernel_size = (3, 3),
-                        padding = "same",
-                        activation = "relu")
-
-    Recon_1 = Conv2D(filters = input_channels,
-                        kernel_size = (3, 3),
-                        padding = "same",
-                        activation = "relu")
+    Recon_0 = Conv2D(filters = filter_num, kernel_size = (3, 3), padding = "same", activation = "relu")
+    Recon_1 = Conv2D(filters = input_channels, kernel_size = (3, 3), padding = "same", activation = "relu")
     """
     Inferencd_conv2d : Inference net.
     Recon_0, Recon_1 : Reconstruction net.
     """
-
     #model
     input_shape = Input((None, None, input_channels))
-    
     #Embedding net.
-    conv2d_0 = Conv2D(filters = filter_num,
-                        kernel_size = (3, 3),
-                        padding = "same",
-                        activation = "relu"
-                        )(input_shape)
-    conv2d_1 = Conv2D(filters = filter_num,
-                        kernel_size = (3, 3),
-                        padding = "same",
-                        activation = "relu"
-                        )(conv2d_0)
-                        
+    conv2d_0 = Conv2D(filters = filter_num, kernel_size = (3, 3), padding = "same", activation = "relu")(input_shape)
+    conv2d_1 = Conv2D(filters = filter_num, kernel_size = (3, 3), padding = "same", activation = "relu")(conv2d_0)                       
     #Inference net and Reconstruction net.
     H = []  
 
@@ -56,7 +35,6 @@ def DRCN(recursive_depth, input_channels, filter_num = 256):
     skip_connection = Add()([input_shape, final_output])
 
     model = Model(inputs = input_shape, outputs = skip_connection)
-
     model.summary()
 
     return model
