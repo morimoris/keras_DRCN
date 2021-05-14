@@ -40,4 +40,3 @@ def DRCN(recursive_depth, input_channels, filter_num = 256):
     model.summary()
 
     return model
-
