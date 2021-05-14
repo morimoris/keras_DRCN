@@ -3,58 +3,51 @@ import data_create
 import argparse
 import os
 import cv2
-import glob
-import keras
-import tensorflow
-import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Tensorflow DRCN Example')
 
-    train_height = 41  #HR・LRのサイズ
-    train_width = 41
-    test_height = 720  #HR・LRのサイズ
-    test_width = 1280
-
-    train_dataset_num = 10000 #生成する学習データの数
-    test_dataset_num = 10     #生成するテストデータの数
-    train_cut_num = 10        #一組の動画から生成するデータの数
-    test_cut_num = 1
-
-    train_path = "../../dataset/DIV2K_train_HR"  #画像が入っているパス
-    test_path = "../../dataset/DIV2K_valid_HR"
-
-    recursive_depth = 16  #モデルのInference netの数
-    input_channels = 1    #画像のチャンネル数、グレースケール画像で処理を行う
-    BATCH_SIZE = 64
-    EPOCHS = 100
-    
+    parser.add_argument('--train_height', type=int, default=41, help="Train data size(height)")
+    parser.add_argument('--train_width', type=int, default=41, help="Train data size(width)")
+    parser.add_argument('--test_height', type=int, default=360, help="Test data size(height)")
+    parser.add_argument('--test_width', type=int, default=640, help="Test data size(width)")
+    parser.add_argument('--train_dataset_num', type=int, default=10000, help = "Number of train datasets to generate")
+    parser.add_argument('--test_dataset_num', type=int, default=5, help="Number of test datasets to generate")
+    parser.add_argument('--train_cut_num', type=int, default=10, help="Number of train data to be generated from a single image")
+    parser.add_argument('--test_cut_num', type=int, default=1, help="Number of test data to be generated from a single image")
+    parser.add_argument('--train_path', type=str, default="../../dataset/DIV2K_train_HR", help="The path containing the train image")
+    parser.add_argument('--test_path', type=str, default="../../dataset/DIV2K_valid_HR", help="The path containing the test image")
+    parser.add_argument('--recursive_depth', type=int, default=16, help="Number of Inference nets in the model")
+    parser.add_argument('--input_channels', type=int, default=1, help="Number of channels for the input image")
+    parser.add_argument('--BATCH_SIZE', type=int, default=64, help="Training batch size")
+    parser.add_argument('--EPOCHS', type=int, default=100, help="Number of epochs to train for")
+   
     def psnr(y_true, y_pred):
         return tf.image.psnr(y_true, y_pred, 1, name=None)
 
-    parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, default='train_model', help='train_datacreate, test_datacreate, train_model, evaluate')
 
     args = parser.parse_args()
 
     if args.mode == 'train_datacreate': #学習用データセットの生成
         datacreate = data_create.datacreate()
-        train_x, train_y = datacreate.datacreate(train_path,       #切り取る動画のpath
-                                            train_dataset_num,     #データセットの生成数
-                                            train_cut_num,         #1枚の画像から生成するデータの数
-                                            train_height,          #保存サイズ
-                                            train_width)   
+        train_x, train_y = datacreate.datacreate(args.train_path,       #切り取る動画のpath
+                                            args.train_dataset_num,     #データセットの生成数
+                                            args.train_cut_num,         #1枚の画像から生成するデータの数
+                                            args.train_height,          #保存サイズ
+                                            args.train_width)   
         path = "train_data_list"
         np.savez(path, train_x, train_y)
 
     elif args.mode == 'test_datacreate': #評価用データセットの生成
         datacreate = data_create.datacreate()
-        test_x, test_y = datacreate.datacreate(test_path,
-                                            test_dataset_num,
-                                            test_cut_num,
-                                            test_height,
-                                            test_width)
+        test_x, test_y = datacreate.datacreate(args.test_path,
+                                            args.test_dataset_num,
+                                            args.test_cut_num,
+                                            args.test_height,
+                                            args.test_width)
 
         path = "test_data_list"
         np.savez(path, test_x, test_y)
@@ -78,21 +71,21 @@ if __name__ == "__main__":
         train_x /= 255
         train_y /= 255
 
-        train_model = model.DRCN(recursive_depth, input_channels)
+        train_model = model.DRCN(args.recursive_depth, args.input_channels)
 
         optimizers = tf.keras.optimizers.SGD(lr=0.01, momentum=0.9, decay=1e-4, nesterov=False)
         train_model.compile(loss = "mean_squared_error",
                         optimizer = optimizers,
                         metrics = [psnr])
 
-        reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(monitor='loss', factor=0.1, patience=5, mode = "min", min_lr=1e-6)
+        reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(monitor = 'loss', factor = 0.1, patience = 5, mode = "min", min_lr = 1e-6)
 
         train_model.fit(train_x,
                         train_y,
-                        epochs = EPOCHS,
+                        epochs = args.EPOCHS,
                         verbose = 2,
                         callbacks = [reduce_lr],
-                        batch_size = BATCH_SIZE)
+                        batch_size = args.BATCH_SIZE)
 
         train_model.save("DRCN_model.h5")
 
@@ -130,19 +123,19 @@ if __name__ == "__main__":
             for p in range(len(test_y)):
                 pred[p][pred[p] > 1] = 1
                 pred[p][pred[p] < 0] = 0
-                ps_pred = psnr(tf.reshape(test_y[p], [test_height, test_width, 1]), pred[p])
+                ps_pred = psnr(tf.reshape(test_y[p], [args.test_height, args.test_width, 1]), pred[p])
                    
                 ps_pred_ave += ps_pred
 
                 if True:
-                    low_img = tf.keras.preprocessing.image.img_to_array(tf.reshape(test_x[p] * 255, [test_height, test_width]))
-                    cv2.imwrite(result_path + "/" + str(p) + "_low" + ".jpg", low_img) #LR
+                    low_img = tf.keras.preprocessing.image.img_to_array(tf.reshape(test_x[p] * 255, [args.test_height, args.test_width]))
+                    cv2.imwrite(result_path + "/" + str(p) + "_low" + ".jpg", low_img)     #LR
 
-                    high_img = tf.keras.preprocessing.image.img_to_array(tf.reshape(test_y[p] * 255, [test_height, test_width]))
+                    high_img = tf.keras.preprocessing.image.img_to_array(tf.reshape(test_y[p] * 255, [args.test_height, args.test_width]))
                     cv2.imwrite(result_path + "/" + str(p) + "_high" + ".jpg", high_img)   #HR
 
-                    pred_img = tf.keras.preprocessing.image.img_to_array(tf.reshape(pred[p] * 255, [test_height, test_width]))
-                    cv2.imwrite(result_path + "/" + str(p) + "_pred" + ".jpg", pred_img) #pred
+                    pred_img = tf.keras.preprocessing.image.img_to_array(tf.reshape(pred[p] * 255, [args.test_height, args.test_width]))
+                    cv2.imwrite(result_path + "/" + str(p) + "_pred" + ".jpg", pred_img)   #pred
 
                     print("num:{}".format(p))
                     print("psnr_pred:{}".format(ps_pred))
