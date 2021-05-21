@@ -3,7 +3,7 @@ from tensorflow.python.keras.layers import Conv2D, Input, Multiply, Add
 
 def DRCN(recursive_depth, input_channels, filter_num = 256): 
     """
-    recursive_depth : numbers of recursive_conv2d.
+    recursive_depth : number of recursive_conv2d.
     input_channels : channels of input_img.(gray → 1, RGB → 3)
     filter_num : filter numbers.(default 256)
     """
